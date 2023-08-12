@@ -11,6 +11,7 @@ import math
 NUM_AG_KEY = "ag" #a dictionary key for the number of antigen a cell holds
 LAST_DIV_TIME_KEY = "div_time"
 DNA_KEY = "dna"
+AFFINITY_KEY = "aff"
 
 ANTIGEN_VALUE = ["A","C","T"]
 INITIAL_DNA = ["T","A","T"]
@@ -65,6 +66,7 @@ class ConstraintInitializerSteppable(SteppableBasePy):
         num_ag_field = self.create_scalar_field_cell_level_py("NUM_AG_FIELD")
         
         
+        
 
     def setup_cells(self):
         TFH_CELL_SIZE = 5
@@ -86,7 +88,8 @@ class ConstraintInitializerSteppable(SteppableBasePy):
             # for y in range(STROMAL_CELL_SIZE, 256-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
                 # if rand.random() < 0.4:
                     # self.cell_field[x:x+STROMAL_CELL_SIZE, y:y+STROMAL_CELL_SIZE, 0] = self.new_cell(self.STROMAL)
-                    
+        
+        original_affinity = judge_affinity(INITIAL_DNA)
         for x in range(0, 120-B_CELL_SIZE, B_CELL_SIZE*5):
             for y in range(B_CELL_SIZE, 256-B_CELL_SIZE, B_CELL_SIZE*5):
                 if rand.random() < 0.5:
@@ -94,6 +97,7 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                     b_cell.dict[NUM_AG_KEY] = FDC_ANTIGEN
                     b_cell.dict[LAST_DIV_TIME_KEY] = -10000
                     b_cell.dict[DNA_KEY] = INITIAL_DNA
+                    b_cell.dict[AFFINITY_KEY] = original_affinity
                     self.cell_field[x:x+B_CELL_SIZE, y:y+B_CELL_SIZE, 0] = b_cell
 
     def start(self):
@@ -111,12 +115,15 @@ class ConstraintInitializerSteppable(SteppableBasePy):
         
         
         
+        
+        
+        
             
     def step(self, mcs):
         global num_ag_field
         global num_plasma
-        for cell in self.cell_list_by_type(self.CENTROBLAST):
-            num_ag_field[cell] = cell.dict[NUM_AG_KEY]
+        # for cell in self.cell_list_by_type(self.CENTROBLAST):
+            # num_ag_field[cell] = cell.dict[NUM_AG_KEY]
             
         for cell in self.cell_list_by_type(self.CENTROCYTE):
             for neighbor, common_surface_area in self.get_cell_neighbor_data_list(cell):
@@ -128,7 +135,7 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                         # cell.type = 
             
                     if neighbor.type == self.TFH:
-                        affinity = judge_affinity(cell.dict[DNA_KEY])
+                        affinity = cell.dict[AFFINITY_KEY]
                         if affinity >= 1.0:
                             cell.type = self.PLASMA
                             global num_plasma
@@ -137,10 +144,12 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                         else:
                             cell.type = self.CENTROBLAST
                             
-           
-            num_ag_field[cell] = cell.dict[NUM_AG_KEY]
             
             
+        
+        
+        
+        
         
         
 # class GrowthSteppable(SteppableBasePy):
@@ -210,7 +219,9 @@ class MitosisSteppable(MitosisSteppableBase):
             new_dna = mutate(cell.dict[DNA_KEY])
             cell.dict[DNA_KEY] = new_dna
             
-            affinity_field[cell] = judge_affinity(new_dna)
+            affinity = judge_affinity(new_dna)
+            cell.dict[AFFINITY_KEY] = affinity
+            affinity_field[cell] = affinity
             
             if cell.dict[NUM_AG_KEY] < 100: #about 5 splits from 3000 antigen
                 cell.type = self.CENTROCYTE
@@ -230,4 +241,30 @@ class DeathSteppable(SteppableBasePy):
                 self.delete_cell(cell)
                 
 
+                
+class UpdatePlotsSteppable(SteppableBasePy):
+
+    def start(self):
+        # initialize setting for Histogram
+        self.plot_win = self.add_new_plot_window(title='Histogram of Cell Volumes', x_axis_title='Number of Cells',
+                                                 y_axis_title='Volume Size in Pixels')
+        # _alpha is transparency 0 is transparent, 255 is opaque
+        self.plot_win.add_histogram_plot(plot_name='Current Affinity Levels', color='green', alpha=200)
+
+    def step(self, mcs):
+        global num_plasma
+        hist_list = [1] * (len(self.cell_list_by_type(self.CENTROBLAST, self.CENTROCYTE)) + num_plasma)
+        i = 0
+        for cell in self.cell_list_by_type(self.CENTROBLAST, self.CENTROCYTE):
+            num_ag_field[cell] = cell.dict[NUM_AG_KEY]
+            hist_list[i] = cell.dict[AFFINITY_KEY]
+            i += 1
+        self.plot_win.add_histogram(plot_name='Current Affinity Levels', value_array=hist_list, number_of_bins=10)
+
+    def on_stop(self):
+        '''
+        this gets called each time user stops simulation
+        '''        
+        # PLACE YOUR CODE BELOW THIS LINE
         
+        return

@@ -30,4 +30,9 @@ CompuCellSetup.register_steppable(steppable=DeathSteppable(frequency=100))
 
 
 
+
+        
+from GerminalCenterMigrationSteppables import UpdatePlotsSteppable
+CompuCellSetup.register_steppable(steppable=UpdatePlotsSteppable(frequency=200))
+
 CompuCellSetup.run()

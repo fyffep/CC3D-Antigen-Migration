@@ -65,8 +65,8 @@
       <Energy Type1="Centroblast" Type2="Centroblast">20.0</Energy>
       <Energy Type1="Centroblast" Type2="Centrocyte">20.0</Energy>
       <Energy Type1="Centroblast" Type2="Stromal">15.0</Energy>
-      <Energy Type1="Centroblast" Type2="Dendritic">10.0</Energy>
-      <Energy Type1="Centroblast" Type2="TFH">10.0</Energy>
+      <Energy Type1="Centroblast" Type2="Dendritic">100.0</Energy>
+      <Energy Type1="Centroblast" Type2="TFH">100.0</Energy>
       
       <Energy Type1="Centrocyte" Type2="Centrocyte">30.0</Energy>
       <Energy Type1="Centrocyte" Type2="Stromal">30.0</Energy>
