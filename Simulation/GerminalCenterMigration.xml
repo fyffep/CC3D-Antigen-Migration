@@ -1,0 +1,169 @@
+<CompuCell3D Revision="0" Version="4.4.1">
+   
+   <Metadata>
+      
+      <!-- Basic properties simulation -->
+      <NumberOfProcessors>1</NumberOfProcessors>
+      <DebugOutputFrequency>10</DebugOutputFrequency>
+      <!-- <NonParallelModule Name="Potts"/> -->
+   </Metadata>
+   
+   <Potts>
+      
+      <!-- Basic properties of CPM (GGH) algorithm -->
+      <Dimensions x="256" y="256" z="1"/>
+      <Steps>100000</Steps>
+      <Temperature>10.0</Temperature>
+      <NeighborOrder>1</NeighborOrder>
+   </Potts>
+   
+   <Plugin Name="CellType">
+      
+      <!-- Listing all cell types in the simulation -->
+      <CellType TypeId="0" TypeName="Medium"/>
+      <CellType TypeId="1" TypeName="Centroblast"/>
+      <CellType TypeId="2" TypeName="Centrocyte"/>
+      <CellType TypeId="3" TypeName="Stromal"/>
+      <CellType TypeId="4" TypeName="Dendritic"/>
+      <CellType TypeId="5" TypeName="TFH"/>
+   </Plugin>
+   
+    <Plugin Name="Volume">
+       <VolumeEnergyParameters CellType="Centroblast" LambdaVolume="2.0" TargetVolume="30.0"/>
+       <VolumeEnergyParameters CellType="Centrocyte" LambdaVolume="2.0" TargetVolume="30.0"/>
+       <VolumeEnergyParameters CellType="Stromal" LambdaVolume="2.0" TargetVolume="30.0"/>
+       <VolumeEnergyParameters CellType="Dendritic" LambdaVolume="2.0" TargetVolume="100.0"/>
+       <VolumeEnergyParameters CellType="TFH" LambdaVolume="2.0" TargetVolume="50.0"/>
+    </Plugin>
+   
+   <!-- <Plugin Name="Surface"/> -->
+   
+   <Plugin Name="CenterOfMass">
+      
+      <!-- Module tracking center of mass of each cell -->
+   </Plugin>
+   
+   <Plugin Name="NeighborTracker">
+      
+      <!-- Module tracking neighboring cells of each cell -->
+   </Plugin>
+   
+   <Plugin Name="Contact">
+      <!-- Specification of adhesion energies -->
+      <Energy Type1="Medium" Type2="Medium">10.0</Energy>
+      <Energy Type1="Medium" Type2="Centroblast">10.0</Energy>
+      <Energy Type1="Medium" Type2="Centrocyte">10.0</Energy>
+      <Energy Type1="Medium" Type2="Stromal">10.0</Energy>
+      <Energy Type1="Medium" Type2="Dendritic">10.0</Energy>
+      <Energy Type1="Medium" Type2="TFH">10.0</Energy>
+      
+      <Energy Type1="Centroblast" Type2="Centroblast">20.0</Energy>
+      <Energy Type1="Centroblast" Type2="Stromal">15.0</Energy>
+      <Energy Type1="Centroblast" Type2="Dendritic">10.0</Energy>
+      <Energy Type1="Centroblast" Type2="TFH">10.0</Energy>
+      
+      <Energy Type1="Centrocyte" Type2="Centrocyte">30.0</Energy>
+      <Energy Type1="Centrocyte" Type2="Stromal">30.0</Energy>
+      <Energy Type1="Centrocyte" Type2="Dendritic">5.0</Energy>
+      <Energy Type1="Centrocyte" Type2="TFH">5.0</Energy>
+      
+      <Energy Type1="Stromal" Type2="Stromal">15.0</Energy>
+      <Energy Type1="Stromal" Type2="Dendritic">10.0</Energy>
+      <!-- <Energy Type1="Stromal" Type2="TFH">10.0</Energy> -->
+      
+      <Energy Type1="Dendritic" Type2="Dendritic">10.0</Energy>
+      <Energy Type1="Dendritic" Type2="TFH">10.0</Energy>
+      <Energy Type1="TFH" Type2="TFH">20.0</Energy>
+      <NeighborOrder>2</NeighborOrder>
+   </Plugin>
+   
+   <Plugin Name="Chemotaxis">
+      
+      <!-- You may repeat ChemicalField element for each chemical field declared in the PDE solvers --> 
+      <!-- Specification of chemotaxis properties of select cell types. --> 
+      <ChemicalField Name="CXCL12">
+         <ChemotaxisByType Lambda="-500.0" Type="Centroblast"/>
+      </ChemicalField>
+      <ChemicalField Name="CXCL13">
+         <ChemotaxisByType Lambda="50000.0" Type="Centrocyte" SaturationLinearCoef="3.0" />
+         
+      </ChemicalField>
+      
+   </Plugin>
+   
+   <Plugin Name="Secretion">
+      
+      <!-- Specification of secretion properties of select cell types. -->
+      <!-- You may repeat Field element for each chemical field declared in the PDE solvers -->
+      <!-- Specification of secretion properties of individual cells can be done in Python -->
+      <Field Name="CXCL12">
+         <Secretion Type="Stromal">0.1</Secretion>
+      </Field>
+      <Field Name="CXCL13">
+         <Secretion Type="Dendritic">0.1</Secretion>
+      </Field>
+   </Plugin>
+   
+   <Steppable Type="DiffusionSolverFE">
+      
+      <!-- Specification of PDE solvers -->
+      <DiffusionField Name="CXCL12">
+         <DiffusionData>
+            <FieldName>CXCL12</FieldName>
+            <!-- <GlobalDiffusionConstant>10.0</GlobalDiffusionConstant> -->
+            <GlobalDecayConstant>0.0</GlobalDecayConstant>
+            <InitialConcentrationExpression>50/x</InitialConcentrationExpression>
+         </DiffusionData>
+         <!-- <SecretionData> -->
+            <!-- &lt;!&ndash; When secretion is defined inside DissufionSolverFE all secretion constants are scaled automaticaly to account for the extra calls to the diffusion step when handling large diffusion constants &ndash;&gt;  -->
+            <!-- <Secretion Type="Stromal">0.05</Secretion> -->
+         <!-- </SecretionData> -->
+      </DiffusionField>
+      <DiffusionField Name="CXCL13">
+         <DiffusionData>
+            <FieldName>CXCL13</FieldName>
+            <!-- <GlobalDiffusionConstant>0.1</GlobalDiffusionConstant> -->
+            <GlobalDecayConstant>0</GlobalDecayConstant>
+            <!-- Additional options are: -->
+            <InitialConcentrationExpression>x/250</InitialConcentrationExpression>
+         </DiffusionData>
+         <!-- <SecretionData> -->
+            <!-- <Secretion Type="Dendritic">0.1</Secretion> -->
+         <!-- </SecretionData> -->
+         <!-- <BoundaryConditions> -->
+            <!-- <Plane Axis="X"> -->
+               <!-- <ConstantValue PlanePosition="Min" Value="10.0"/> -->
+               <!-- <ConstantValue PlanePosition="Max" Value="5.0"/> -->
+               <!-- &lt;!&ndash; Other options are (examples): &ndash;&gt;  -->
+               <!-- &lt;!&ndash; <Periodic/> &ndash;&gt;  -->
+               <!-- &lt;!&ndash; <ConstantDerivative PlanePosition="Min" Value="10.0"/> &ndash;&gt;  -->
+            <!-- </Plane> -->
+            <!-- <Plane Axis="Y"> -->
+               <!-- <ConstantDerivative PlanePosition="Min" Value="10.0"/> -->
+               <!-- <ConstantDerivative PlanePosition="Max" Value="5.0"/> -->
+               <!-- &lt;!&ndash; Other options are (examples): &ndash;&gt;  -->
+               <!-- &lt;!&ndash; <Periodic/> &ndash;&gt;  -->
+               <!-- &lt;!&ndash; <ConstantValue PlanePosition="Min" Value="10.0"/> &ndash;&gt;  -->
+            <!-- </Plane> -->
+         <!-- </BoundaryConditions> -->
+      </DiffusionField>
+   </Steppable>
+   
+   <!-- <Steppable Type="UniformInitializer"> -->
+      <!-- &lt;!&ndash; Initial layout of cells in the form of rectangular slab &ndash;&gt;  --> 
+      <!-- <Region> -->
+         <!-- <BoxMin x="20" y="20" z="0"/> -->
+         <!-- <BoxMax x="120" y="236" z="1"/> -->
+         <!-- <Gap>0</Gap> -->
+         <!-- <Width>7</Width> -->
+         <!-- <Types>Stromal,Medium</Types> -->
+      <!-- </Region> -->
+      <!-- <Region> -->
+         <!-- <BoxMin x="130" y="20" z="0"/> -->
+         <!-- <BoxMax x="236" y="236" z="1"/> -->
+         <!-- <Gap>0</Gap> -->
+         <!-- <Width>7</Width> -->
+         <!-- <Types>Medium,Dendritic,TFH</Types> -->
+      <!-- </Region> -->
+   <!-- </Steppable> -->
+</CompuCell3D>
