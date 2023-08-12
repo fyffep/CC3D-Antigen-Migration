@@ -3,7 +3,7 @@
    <Metadata>
       
       <!-- Basic properties simulation -->
-      <NumberOfProcessors>1</NumberOfProcessors>
+      <NumberOfProcessors>2</NumberOfProcessors>
       <DebugOutputFrequency>10</DebugOutputFrequency>
       <!-- <NonParallelModule Name="Potts"/> -->
    </Metadata>
@@ -26,15 +26,20 @@
       <CellType TypeId="3" TypeName="Stromal"/>
       <CellType TypeId="4" TypeName="Dendritic"/>
       <CellType TypeId="5" TypeName="TFH"/>
+      <CellType TypeId="6" TypeName="Plasma"/>
    </Plugin>
    
     <Plugin Name="Volume">
-       <VolumeEnergyParameters CellType="Centroblast" LambdaVolume="2.0" TargetVolume="30.0"/>
-       <VolumeEnergyParameters CellType="Centrocyte" LambdaVolume="2.0" TargetVolume="30.0"/>
+       <VolumeEnergyParameters CellType="Centroblast" LambdaVolume="2.0" TargetVolume="20.0"/>
+       <VolumeEnergyParameters CellType="Centrocyte" LambdaVolume="2.0" TargetVolume="20.0"/>
        <VolumeEnergyParameters CellType="Stromal" LambdaVolume="2.0" TargetVolume="30.0"/>
        <VolumeEnergyParameters CellType="Dendritic" LambdaVolume="2.0" TargetVolume="100.0"/>
        <VolumeEnergyParameters CellType="TFH" LambdaVolume="2.0" TargetVolume="50.0"/>
+       <VolumeEnergyParameters CellType="Plasma" LambdaVolume="2.0" TargetVolume="0.0"/>
     </Plugin>
+    
+    <!-- <Plugin Name="Volume" /> -->
+
    
    <!-- <Plugin Name="Surface"/> -->
    
@@ -58,14 +63,15 @@
       <Energy Type1="Medium" Type2="TFH">10.0</Energy>
       
       <Energy Type1="Centroblast" Type2="Centroblast">20.0</Energy>
+      <Energy Type1="Centroblast" Type2="Centrocyte">20.0</Energy>
       <Energy Type1="Centroblast" Type2="Stromal">15.0</Energy>
       <Energy Type1="Centroblast" Type2="Dendritic">10.0</Energy>
       <Energy Type1="Centroblast" Type2="TFH">10.0</Energy>
       
       <Energy Type1="Centrocyte" Type2="Centrocyte">30.0</Energy>
       <Energy Type1="Centrocyte" Type2="Stromal">30.0</Energy>
-      <Energy Type1="Centrocyte" Type2="Dendritic">5.0</Energy>
-      <Energy Type1="Centrocyte" Type2="TFH">5.0</Energy>
+      <Energy Type1="Centrocyte" Type2="Dendritic">15.0</Energy>
+      <Energy Type1="Centrocyte" Type2="TFH">3.0</Energy>
       
       <Energy Type1="Stromal" Type2="Stromal">15.0</Energy>
       <Energy Type1="Stromal" Type2="Dendritic">10.0</Energy>
@@ -82,7 +88,7 @@
       <!-- You may repeat ChemicalField element for each chemical field declared in the PDE solvers --> 
       <!-- Specification of chemotaxis properties of select cell types. --> 
       <ChemicalField Name="CXCL12">
-         <ChemotaxisByType Lambda="-500.0" Type="Centroblast"/>
+         <ChemotaxisByType Lambda="50000.0" Type="Centroblast" SaturationLinearCoef="10.0"/>
       </ChemicalField>
       <ChemicalField Name="CXCL13">
          <ChemotaxisByType Lambda="50000.0" Type="Centrocyte" SaturationLinearCoef="3.0" />

@@ -24,9 +24,9 @@ CompuCellSetup.register_steppable(steppable=MitosisSteppable(frequency=1))
 
 
 
-# from GerminalCenterMigrationSteppables import DeathSteppable
+from GerminalCenterMigrationSteppables import DeathSteppable
 
-# CompuCellSetup.register_steppable(steppable=DeathSteppable(frequency=1))
+CompuCellSetup.register_steppable(steppable=DeathSteppable(frequency=100))
 
 
 

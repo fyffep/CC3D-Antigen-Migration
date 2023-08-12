@@ -10,12 +10,21 @@ import math
 
 NUM_AG_KEY = "ag" #a dictionary key for the number of antigen a cell holds
 LAST_DIV_TIME_KEY = "div_time"
+DNA_KEY = "dna"
 
-ANTIGEN_VALUE = "ACTG"
+ANTIGEN_VALUE = ["A","C","T"]
+INITIAL_DNA = ["T","A","T"]
+ANTIGEN_SYMBOLS = ["A","C","T","G"]
+ANTIGEN_LEN = len(ANTIGEN_VALUE)
 
 DIVIDE_AG_ASYMMETRIC = 0.72
 POLARITY_INDEX = 0.88
 FDC_ANTIGEN = 3000 #from MerinoTejero2021
+
+affinity_field = None
+num_ag_field = None
+
+num_plasma = 0
 
 #also from MerinoTejero2021
 # B-Cell Speed (um / hr)
@@ -29,13 +38,31 @@ FDC_ANTIGEN = 3000 #from MerinoTejero2021
 
 #one idea: let FDCs (receptor length 8) give antigen from far away with cell links
 
+def mutate(dna):
+    # print("mutated ",dna,end="  ")
+    i = rand.randint(0, ANTIGEN_LEN-1)
+    symbol = ANTIGEN_SYMBOLS[rand.randint(0, len(ANTIGEN_SYMBOLS)-1)]
+    dna[i] = symbol
+    # print("to",dna)
+    return dna
+    
+def judge_affinity(dna):
+    ham = 0
+    for i in range(ANTIGEN_LEN):
+        if dna[i] == ANTIGEN_VALUE[i]:
+            ham += 1
+    return ham / ANTIGEN_LEN
 
 
 class ConstraintInitializerSteppable(SteppableBasePy):
     def __init__(self,frequency=1):
         SteppableBasePy.__init__(self,frequency)
-        # self.create_scalar_field_cell_level_py("AFFINITY_FIELD")
-        self.num_ag_field = self.create_scalar_field_cell_level_py("NUM_AG_FIELD")
+        rand.seed(667)
+        
+        global affinity_field
+        global num_ag_field
+        affinity_field = self.create_scalar_field_cell_level_py("AFFINITY_FIELD")
+        num_ag_field = self.create_scalar_field_cell_level_py("NUM_AG_FIELD")
         
         
 
@@ -49,11 +76,16 @@ class ConstraintInitializerSteppable(SteppableBasePy):
             for y in range(TFH_CELL_SIZE, 256-TFH_CELL_SIZE, TFH_CELL_SIZE*3):
                 if rand.random() < 0.33:
                     self.cell_field[x:x+TFH_CELL_SIZE, y:y+TFH_CELL_SIZE, 0] = self.new_cell(self.TFH)
+                    
+        for x in range(136, 256-DENDRITIC_CELL_SIZE, DENDRITIC_CELL_SIZE*2):
+            for y in range(DENDRITIC_CELL_SIZE, 256-DENDRITIC_CELL_SIZE, DENDRITIC_CELL_SIZE*2):
+                if rand.random() < 0.5:
+                    self.cell_field[x:x+DENDRITIC_CELL_SIZE, y:y+DENDRITIC_CELL_SIZE, 0] = self.new_cell(self.DENDRITIC)
         
-        for x in range(0, 120-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
-            for y in range(STROMAL_CELL_SIZE, 256-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
-                if rand.random() < 0.4:
-                    self.cell_field[x:x+STROMAL_CELL_SIZE, y:y+STROMAL_CELL_SIZE, 0] = self.new_cell(self.STROMAL)
+        # for x in range(0, 120-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
+            # for y in range(STROMAL_CELL_SIZE, 256-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
+                # if rand.random() < 0.4:
+                    # self.cell_field[x:x+STROMAL_CELL_SIZE, y:y+STROMAL_CELL_SIZE, 0] = self.new_cell(self.STROMAL)
                     
         for x in range(0, 120-B_CELL_SIZE, B_CELL_SIZE*5):
             for y in range(B_CELL_SIZE, 256-B_CELL_SIZE, B_CELL_SIZE*5):
@@ -61,30 +93,53 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                     b_cell = self.new_cell(self.CENTROBLAST)
                     b_cell.dict[NUM_AG_KEY] = FDC_ANTIGEN
                     b_cell.dict[LAST_DIV_TIME_KEY] = -10000
+                    b_cell.dict[DNA_KEY] = INITIAL_DNA
                     self.cell_field[x:x+B_CELL_SIZE, y:y+B_CELL_SIZE, 0] = b_cell
 
     def start(self):
-        rand.seed(667)
         self.setup_cells()
 
+        # # for cell in self.cell_list_by_type(self.CENTROBLAST):
+            # # cell.targetVolume = 25
+            # # cell.lambdaVolume = 2.0
+            
+        # # iterating over all cells in simulation        
         # for cell in self.cell_list:
-
-            # cell.targetVolume = 25
-            # cell.lambdaVolume = 2.0
+            # # you can access/manipulate cell properties here
+            # print("id=", cell.id, " type=", cell.type, " volume=", cell.volume)
+        
+        
         
         
             
     def step(self, mcs):
+        global num_ag_field
+        global num_plasma
+        for cell in self.cell_list_by_type(self.CENTROBLAST):
+            num_ag_field[cell] = cell.dict[NUM_AG_KEY]
+            
         for cell in self.cell_list_by_type(self.CENTROCYTE):
             for neighbor, common_surface_area in self.get_cell_neighbor_data_list(cell):
-                if neighbor and neighbor.type == self.DENDRITIC:
-                    #Robert2017: bindprobability ← affinity(BCR, antigen) . ( F.antigenAmount[f] / antigenSaturation)
-                    #TODO
-                    cell.dict[NUM_AG_KEY] = FDC_ANTIGEN
+                if neighbor:
+                    if neighbor.type == self.DENDRITIC:
+                        #Robert2017: bindprobability ← affinity(BCR, antigen) . ( F.antigenAmount[f] / antigenSaturation)
+                        #TODO
+                        cell.dict[NUM_AG_KEY] = FDC_ANTIGEN
+                        # cell.type = 
             
-            self.num_ag_field[cell] = rand.random()
-        
-        
+                    if neighbor.type == self.TFH:
+                        affinity = judge_affinity(cell.dict[DNA_KEY])
+                        if affinity >= 1.0:
+                            cell.type = self.PLASMA
+                            global num_plasma
+                            num_plasma += 1
+                            print("num_plasma",num_plasma)
+                        else:
+                            cell.type = self.CENTROBLAST
+                            
+           
+            num_ag_field[cell] = cell.dict[NUM_AG_KEY]
+            
             
         
         
@@ -118,15 +173,17 @@ class MitosisSteppable(MitosisSteppableBase):
         
         for cell in self.cell_list_by_type(self.CENTROBLAST):
             last_div_time = cell.dict[LAST_DIV_TIME_KEY]
-            if mcs - last_div_time >= 300:
+            if mcs - last_div_time >= 200:
                 cell.dict[LAST_DIV_TIME_KEY] = mcs
-                cells_to_divide.append(cell)
+                if len(self.get_cell_neighbor_data_list(cell)) < 4:
+                    cells_to_divide.append(cell)
         
         for cell in cells_to_divide:
             self.divide_cell_random_orientation(cell)
     
 
     def update_attributes(self):
+        global affinity_field
         # reducing parent target volume
         # self.parent_cell.targetVolume /= 2.0                  
 
@@ -146,28 +203,31 @@ class MitosisSteppable(MitosisSteppableBase):
             #Even split of Ag
             self.parent_cell.dict[NUM_AG_KEY] = total_ag // 2
             self.child_cell.dict[NUM_AG_KEY] = total_ag // 2
-            
-        
-        if self.parent_cell.type==1:
-            self.child_cell.type=2
-        else:
-            self.child_cell.type=1
-            
+                    
         for cell in [self.parent_cell, self.child_cell]:
+            
+            #Mutate and update affinity
+            new_dna = mutate(cell.dict[DNA_KEY])
+            cell.dict[DNA_KEY] = new_dna
+            
+            affinity_field[cell] = judge_affinity(new_dna)
+            
             if cell.dict[NUM_AG_KEY] < 100: #about 5 splits from 3000 antigen
                 cell.type = self.CENTROCYTE
+                cell.dict[NUM_AG_KEY] = 0
 
         
-# class DeathSteppable(SteppableBasePy):
-    # def __init__(self, frequency=1):
-        # SteppableBasePy.__init__(self, frequency)
+class DeathSteppable(SteppableBasePy):
+    def __init__(self, frequency=1):
+        SteppableBasePy.__init__(self, frequency)
 
-    # def step(self, mcs):
-        # pass
-        # # if mcs == 1000:
-            # # for cell in self.cell_list:
-                # # if cell.type==1:
-                    # # cell.targetVolume=0
-                    # # cell.lambdaVolume=100
+    def step(self, mcs):
+        for cell in self.cell_list:
+            if cell.volume < 2:
+                # if cell.type == self.CENTROBLAST or cell.type == self.CENTROCYTE:
+                    # global num_plasma
+                    # num_plasma += 1
+                self.delete_cell(cell)
+                
 
         
