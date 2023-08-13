@@ -56,30 +56,30 @@
    <Plugin Name="Contact">
       <!-- Specification of adhesion energies -->
       <Energy Type1="Medium" Type2="Medium">10.0</Energy>
-      <Energy Type1="Medium" Type2="Centroblast">10.0</Energy>
+      <Energy Type1="Medium" Type2="Centroblast">8.0</Energy>
       <Energy Type1="Medium" Type2="Centrocyte">10.0</Energy>
       <Energy Type1="Medium" Type2="Stromal">10.0</Energy>
       <Energy Type1="Medium" Type2="Dendritic">10.0</Energy>
       <Energy Type1="Medium" Type2="TFH">10.0</Energy>
       
       <Energy Type1="Centroblast" Type2="Centroblast">20.0</Energy>
-      <Energy Type1="Centroblast" Type2="Centrocyte">20.0</Energy>
+      <Energy Type1="Centroblast" Type2="Centrocyte">50.0</Energy>
       <Energy Type1="Centroblast" Type2="Stromal">15.0</Energy>
       <Energy Type1="Centroblast" Type2="Dendritic">100.0</Energy>
       <Energy Type1="Centroblast" Type2="TFH">100.0</Energy>
       
       <Energy Type1="Centrocyte" Type2="Centrocyte">30.0</Energy>
       <Energy Type1="Centrocyte" Type2="Stromal">30.0</Energy>
-      <Energy Type1="Centrocyte" Type2="Dendritic">15.0</Energy>
+      <Energy Type1="Centrocyte" Type2="Dendritic">13.0</Energy>
       <Energy Type1="Centrocyte" Type2="TFH">3.0</Energy>
       
       <Energy Type1="Stromal" Type2="Stromal">15.0</Energy>
       <Energy Type1="Stromal" Type2="Dendritic">10.0</Energy>
       <!-- <Energy Type1="Stromal" Type2="TFH">10.0</Energy> -->
       
-      <Energy Type1="Dendritic" Type2="Dendritic">10.0</Energy>
+      <Energy Type1="Dendritic" Type2="Dendritic">40.0</Energy>
       <Energy Type1="Dendritic" Type2="TFH">10.0</Energy>
-      <Energy Type1="TFH" Type2="TFH">20.0</Energy>
+      <Energy Type1="TFH" Type2="TFH">40.0</Energy>
       <NeighborOrder>2</NeighborOrder>
    </Plugin>
    
@@ -87,12 +87,17 @@
       
       <!-- You may repeat ChemicalField element for each chemical field declared in the PDE solvers --> 
       <!-- Specification of chemotaxis properties of select cell types. --> 
+      <!-- <ChemicalField Name="CXCL12"> -->
+         <!-- <ChemotaxisByType Lambda="500000.0" Type="Centroblast" SaturationLinearCoef="10.0"/> -->
+      <!-- </ChemicalField> -->
+      <!-- <ChemicalField Name="CXCL13"> -->
+         <!-- <ChemotaxisByType Lambda="50000.0" Type="Centrocyte" SaturationLinearCoef="3.0" /> -->
+      <!-- </ChemicalField> -->
       <ChemicalField Name="CXCL12">
-         <ChemotaxisByType Lambda="50000.0" Type="Centroblast" SaturationLinearCoef="10.0"/>
+         <ChemotaxisByType Lambda="250000.0" Type="Centroblast"/>
       </ChemicalField>
       <ChemicalField Name="CXCL13">
-         <ChemotaxisByType Lambda="50000.0" Type="Centrocyte" SaturationLinearCoef="3.0" />
-         
+         <ChemotaxisByType Lambda="50000.0" Type="Centrocyte"/>
       </ChemicalField>
       
    </Plugin>
@@ -118,7 +123,7 @@
             <FieldName>CXCL12</FieldName>
             <!-- <GlobalDiffusionConstant>10.0</GlobalDiffusionConstant> -->
             <GlobalDecayConstant>0.0</GlobalDecayConstant>
-            <InitialConcentrationExpression>50/x</InitialConcentrationExpression>
+            <InitialConcentrationExpression>min(0.7, 50/x)</InitialConcentrationExpression>
          </DiffusionData>
          <!-- <SecretionData> -->
             <!-- &lt;!&ndash; When secretion is defined inside DissufionSolverFE all secretion constants are scaled automaticaly to account for the extra calls to the diffusion step when handling large diffusion constants &ndash;&gt;  -->

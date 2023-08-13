@@ -4,11 +4,18 @@ from cc3d.core.PySteppables import *
 import numpy as np
 import random as rand
 import math
+from copy import deepcopy
+import os
 
 #VOCABULARY:
 #Ag = antigen
+#100 mcs = one hour
+
+#division time of centroblasts = ~7 hours = 700 mcs
+DIVISION_TIME = 140 #FIXME...700 or 140?
 
 NUM_AG_KEY = "ag" #a dictionary key for the number of antigen a cell holds
+TOTAL_AG_COLLECTED_KEY = "tag"
 LAST_DIV_TIME_KEY = "div_time"
 DNA_KEY = "dna"
 AFFINITY_KEY = "aff"
@@ -18,26 +25,24 @@ INITIAL_DNA = ["T","A","T"]
 ANTIGEN_SYMBOLS = ["A","C","T","G"]
 ANTIGEN_LEN = len(ANTIGEN_VALUE)
 
-DIVIDE_AG_ASYMMETRIC = 0.72
-POLARITY_INDEX = 0.88
+DIVIDE_AG_ASYMMETRIC = 0.72 #from Robert2017
+POLARITY_INDEX = 0.88 #from Robert2017
 FDC_ANTIGEN = 3000 #from MerinoTejero2021
+
+COLLECT_FDC_TIME_KEY = "collect_period"
+COLLECT_FDC_TIME = 70 #from Robert2017
+
+TFH_TOUCH_TIME_KEY = "tfh_time"
+#below times are measured in mcs
+TFH_RESCUE_TIME = 50 #from Robert2017
+TFH_TOUCH_TIME = 60 #from Robert2017
 
 affinity_field = None
 num_ag_field = None
 
 num_plasma = 0
 
-#also from MerinoTejero2021
-# B-Cell Speed (um / hr)
-# 0.18
-# B-Cell Persistent Time average (hr.)
-# 0.08
 
-#Duration of CC collection of Antigen by serial encounters with FDC (hr.)
-#i.e. how long a b cell touches an FDC to receive ag
-# 0.7
-
-#one idea: let FDCs (receptor length 8) give antigen from far away with cell links
 
 def mutate(dna):
     # print("mutated ",dna,end="  ")
@@ -74,20 +79,15 @@ class ConstraintInitializerSteppable(SteppableBasePy):
         B_CELL_SIZE = 3
         STROMAL_CELL_SIZE = B_CELL_SIZE
         
-        for x in range(136, 256-TFH_CELL_SIZE, TFH_CELL_SIZE*3):
-            for y in range(TFH_CELL_SIZE, 256-TFH_CELL_SIZE, TFH_CELL_SIZE*3):
-                if rand.random() < 0.33:
+        for x in range(156, 256-TFH_CELL_SIZE, TFH_CELL_SIZE*3):
+            for y in range(TFH_CELL_SIZE, 256-TFH_CELL_SIZE, TFH_CELL_SIZE*2):
+                if rand.random() < 0.4:
                     self.cell_field[x:x+TFH_CELL_SIZE, y:y+TFH_CELL_SIZE, 0] = self.new_cell(self.TFH)
                     
-        for x in range(136, 256-DENDRITIC_CELL_SIZE, DENDRITIC_CELL_SIZE*2):
+        for x in range(156, 256-DENDRITIC_CELL_SIZE, DENDRITIC_CELL_SIZE*3):
             for y in range(DENDRITIC_CELL_SIZE, 256-DENDRITIC_CELL_SIZE, DENDRITIC_CELL_SIZE*2):
-                if rand.random() < 0.5:
+                if rand.random() < 0.6:
                     self.cell_field[x:x+DENDRITIC_CELL_SIZE, y:y+DENDRITIC_CELL_SIZE, 0] = self.new_cell(self.DENDRITIC)
-        
-        # for x in range(0, 120-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
-            # for y in range(STROMAL_CELL_SIZE, 256-STROMAL_CELL_SIZE, STROMAL_CELL_SIZE*3):
-                # if rand.random() < 0.4:
-                    # self.cell_field[x:x+STROMAL_CELL_SIZE, y:y+STROMAL_CELL_SIZE, 0] = self.new_cell(self.STROMAL)
         
         original_affinity = judge_affinity(INITIAL_DNA)
         for x in range(0, 120-B_CELL_SIZE, B_CELL_SIZE*5):
@@ -95,23 +95,32 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                 if rand.random() < 0.5:
                     b_cell = self.new_cell(self.CENTROBLAST)
                     b_cell.dict[NUM_AG_KEY] = FDC_ANTIGEN
+                    b_cell.dict[TOTAL_AG_COLLECTED_KEY] = 0
                     b_cell.dict[LAST_DIV_TIME_KEY] = -10000
-                    b_cell.dict[DNA_KEY] = INITIAL_DNA
+                    b_cell.dict[DNA_KEY] = deepcopy(INITIAL_DNA) #shallow copy of DNA list
                     b_cell.dict[AFFINITY_KEY] = original_affinity
+                    b_cell.dict[COLLECT_FDC_TIME_KEY] = 0
                     self.cell_field[x:x+B_CELL_SIZE, y:y+B_CELL_SIZE, 0] = b_cell
+        
+        print("Initial no. TFH cells:", len(self.cell_list_by_type(self.TFH)))
+        print("Initial no. DENDRITIC cells:", len(self.cell_list_by_type(self.DENDRITIC)))
+        print("Initial no. CENTROBLAST cells:", len(self.cell_list_by_type(self.CENTROBLAST)))
+
 
     def start(self):
         self.setup_cells()
-
-        # # for cell in self.cell_list_by_type(self.CENTROBLAST):
-            # # cell.targetVolume = 25
-            # # cell.lambdaVolume = 2.0
-            
-        # # iterating over all cells in simulation        
-        # for cell in self.cell_list:
-            # # you can access/manipulate cell properties here
-            # print("id=", cell.id, " type=", cell.type, " volume=", cell.volume)
         
+        self.ag_plot_win = self.add_new_plot_window(title='Plasmablast Exit Time v. Antigen Collected',
+                                                 x_axis_title='Time Plasmablast Formed (log2 of MCS)',
+                                                 y_axis_title='Total Antigen Received from FDCs', x_scale_type='linear', y_scale_type='linear',
+                                                 grid=False)
+        self.ag_plot_win.add_plot("plot_ag_collected", style='Lines', color='red', size=5)
+        
+        self.death_plot_win = self.add_new_plot_window(title='Affinity Level Upon Apoptosis',
+                                                 x_axis_title='Time of B Cell Death (log2 of MCS)',
+                                                 y_axis_title='Affinity Level of Cell', x_scale_type='linear', y_scale_type='linear',
+                                                 grid=True)
+        self.death_plot_win.add_plot("plot_death", style='Lines', color='green', size=5)
         
         
         
@@ -122,56 +131,64 @@ class ConstraintInitializerSteppable(SteppableBasePy):
     def step(self, mcs):
         global num_ag_field
         global num_plasma
-        # for cell in self.cell_list_by_type(self.CENTROBLAST):
-            # num_ag_field[cell] = cell.dict[NUM_AG_KEY]
-            
+        
         for cell in self.cell_list_by_type(self.CENTROCYTE):
             for neighbor, common_surface_area in self.get_cell_neighbor_data_list(cell):
                 if neighbor:
+                    interacting = False
+                    
                     if neighbor.type == self.DENDRITIC:
+                        interacting = True
                         #Robert2017: bindprobability ← affinity(BCR, antigen) . ( F.antigenAmount[f] / antigenSaturation)
-                        #TODO
-                        cell.dict[NUM_AG_KEY] = FDC_ANTIGEN
-                        # cell.type = 
+                        #Cell always picks up 400 antigen TODO improve
+                        # ag_count = 400
+                        # cell.dict[TOTAL_AG_COLLECTED_KEY] += ag_count
+                        # cell.dict[NUM_AG_KEY] += ag_count
+                        cell.dict[TOTAL_AG_COLLECTED_KEY] = 3000
+                        cell.dict[NUM_AG_KEY] = 3000
+                        
+                        #add 1 for the elapsed mcs
+                        # collect_period = 1 + cell.dict[COLLECT_FDC_TIME_KEY]
+                        # if collect_period >= COLLECT_FDC_TIME:
+                            # collect_period = 0
+                            # if cell.dict[NUM_AG_KEY] < 2000:
+                                # #kill cell that didn't pick up enough antigen
+                                # cell.targetVolume = 0
+                        # cell.dict[COLLECT_FDC_TIME_KEY] = collect_period
             
-                    if neighbor.type == self.TFH:
-                        affinity = cell.dict[AFFINITY_KEY]
-                        if affinity >= 1.0:
-                            cell.type = self.PLASMA
-                            global num_plasma
-                            num_plasma += 1
-                            print("num_plasma",num_plasma)
-                        else:
-                            cell.type = self.CENTROBLAST
+        for tfh_cell in self.cell_list_by_type(self.TFH):
+            for b_cell, common_surface_area in self.get_cell_neighbor_data_list(tfh_cell):
+                    if b_cell and b_cell.type == self.CENTROCYTE:
+                        if b_cell.dict[NUM_AG_KEY] >= 2000: #If FDC selected
+                            # interacting = True
+                            affinity = b_cell.dict[AFFINITY_KEY]
+                            if affinity >= 1.0:
+                                b_cell.type = self.PLASMA
+                                global num_plasma
+                                num_plasma += 1
+                                print("num_plasma",num_plasma)
+                                
+                                self.ag_plot_win.add_data_point("plot_ag_collected", round(math.log2(mcs), 2), cell.dict[TOTAL_AG_COLLECTED_KEY])
+                            else:
+                                b_cell.type = self.CENTROBLAST
                             
+                    # if interacting:
+                        # cell.
+                        # # Make sure Chemotaxis Plugin is loaded
+                        # # modifying chemotaxis properties of individual cell 'cell'
+                        # cd = self.chemotaxisPlugin.getChemotaxisData(cell, "CXCL13")
+                        # if cd:
+                            # l = cd.getLambda() - 3
+                            # cd.setLambda(l)
             
             
+    # def on_stop(self):
+        # print('stop')
         
         
         
         
-        
-        
-# class GrowthSteppable(SteppableBasePy):
-    # def __init__(self,frequency=1):
-        # SteppableBasePy.__init__(self, frequency)
 
-    # def step(self, mcs):
-    
-        # for cell in self.cell_list_by_type(self.CENTROBLAST):
-            # cell.targetVolume += 1        
-
-        # # # alternatively if you want to make growth a function of chemical concentration uncomment lines below and comment lines above        
-
-        # # field = self.field.CHEMICAL_FIELD_NAME
-        
-        # # for cell in self.cell_list:
-            # # concentrationAtCOM = field[int(cell.xCOM), int(cell.yCOM), int(cell.zCOM)]
-
-            # # # you can use here any fcn of concentrationAtCOM
-            # # cell.targetVolume += 0.01 * concentrationAtCOM       
-
-        
 class MitosisSteppable(MitosisSteppableBase):
     def __init__(self,frequency=1):
         MitosisSteppableBase.__init__(self,frequency)
@@ -182,9 +199,10 @@ class MitosisSteppable(MitosisSteppableBase):
         
         for cell in self.cell_list_by_type(self.CENTROBLAST):
             last_div_time = cell.dict[LAST_DIV_TIME_KEY]
-            if mcs - last_div_time >= 200:
+            #Here, there are some arbitrary rules to prevent crowding
+            if mcs - last_div_time >= DIVISION_TIME and cell.xCOM < 140:
                 cell.dict[LAST_DIV_TIME_KEY] = mcs
-                if len(self.get_cell_neighbor_data_list(cell)) < 4:
+                if len(self.get_cell_neighbor_data_list(cell)) < 5:
                     cells_to_divide.append(cell)
         
         for cell in cells_to_divide:
@@ -192,9 +210,7 @@ class MitosisSteppable(MitosisSteppableBase):
     
 
     def update_attributes(self):
-        global affinity_field
-        # reducing parent target volume
-        # self.parent_cell.targetVolume /= 2.0                  
+        global affinity_field             
 
         self.clone_parent_2_child()
 
@@ -203,7 +219,9 @@ class MitosisSteppable(MitosisSteppableBase):
         
         
         total_ag = self.parent_cell.dict[NUM_AG_KEY]
-        if rand.random() < DIVIDE_AG_ASYMMETRIC:
+        #random chance to perform asymmetric division 
+        #and a centroblast must divide at least 2-6 times before becoming a centrobyte
+        if rand.random() < DIVIDE_AG_ASYMMETRIC and not total_ag > FDC_ANTIGEN//4:
             #Asymmetric division: one centroblast loses Ag
             sep = rand.uniform(0, POLARITY_INDEX)
             self.parent_cell.dict[NUM_AG_KEY] = math.floor(total_ag * sep)
@@ -246,25 +264,39 @@ class UpdatePlotsSteppable(SteppableBasePy):
 
     def start(self):
         # initialize setting for Histogram
-        self.plot_win = self.add_new_plot_window(title='Histogram of Cell Volumes', x_axis_title='Number of Cells',
-                                                 y_axis_title='Volume Size in Pixels')
+        self.ag_plot_win = self.add_new_plot_window(title='Number of Cells with Affinity', x_axis_title='Affinity Level',
+                                                 y_axis_title='Number of Cells')
         # _alpha is transparency 0 is transparent, 255 is opaque
-        self.plot_win.add_histogram_plot(plot_name='Current Affinity Levels', color='green', alpha=200)
+        self.ag_plot_win.add_histogram_plot(plot_name='Current Affinity Levels', color='green', alpha=200)
 
     def step(self, mcs):
         global num_plasma
-        hist_list = [1] * (len(self.cell_list_by_type(self.CENTROBLAST, self.CENTROCYTE)) + num_plasma)
+        all_b_cells = self.cell_list_by_type(self.CENTROBLAST, self.CENTROCYTE)
+        hist_list = [1] * (len(all_b_cells) + num_plasma)
         i = 0
-        for cell in self.cell_list_by_type(self.CENTROBLAST, self.CENTROCYTE):
+        for cell in all_b_cells:
             num_ag_field[cell] = cell.dict[NUM_AG_KEY]
             hist_list[i] = cell.dict[AFFINITY_KEY]
             i += 1
-        self.plot_win.add_histogram(plot_name='Current Affinity Levels', value_array=hist_list, number_of_bins=10)
+        self.ag_plot_win.add_histogram(plot_name='Current Affinity Levels', value_array=hist_list, number_of_bins=10)
+        
+        
+        
 
     def on_stop(self):
         '''
         this gets called each time user stops simulation
         '''        
-        # PLACE YOUR CODE BELOW THIS LINE
         
-        return
+        # file_name = "C:\\Users\\Pete\\Desktop\\b-cell-project\\output\\hist"
+        # i = 0
+        # while os.path.exists(file_name + str(i) + ".png"):
+            # print(file_name + str(i) + ".png exists")
+            # i += 1
+        # file_name = file_name + str(i) + ".png"
+        
+        # self.ag_plot_win.save_plot_as_png(file_name)
+        
+        
+        
+        
