@@ -121,9 +121,9 @@ class ConstraintInitializerSteppable(SteppableBasePy):
     def start(self):
         self.setup_cells()
         
-        self.ag_plot_win = self.add_new_plot_window(title='Plasmablast Exit Time v. Antigen Collected',
+        self.ag_plot_win = self.add_new_plot_window(title='Plasmablast Generation Upon Exit Time',
                                                  x_axis_title='Time Plasmablast Formed (MCS)',
-                                                 y_axis_title='Total Antigen Received from FDCs', x_scale_type='linear', y_scale_type='linear',
+                                                 y_axis_title='Generation Number', x_scale_type='linear', y_scale_type='linear',
                                                  grid=False)
         self.ag_plot_win.add_plot("plot_ag_collected", style='Lines', color='red', size=5)
         
@@ -206,7 +206,7 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                         global num_plasma
                         num_plasma += 1
                         print("num_plasma",num_plasma)
-                        self.ag_plot_win.add_data_point("plot_ag_collected", mcs, b_cell.dict[TOTAL_AG_COLLECTED_KEY])
+                        self.ag_plot_win.add_data_point("plot_ag_collected", mcs, b_cell.dict[GENERATION_KEY])
                     elif touch_time >= TFH_MAX_TOUCH_TIME:
                         #Violently kill cell!!
                         b_cell.targetVolume = 0
