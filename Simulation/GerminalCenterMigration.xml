@@ -159,22 +159,4 @@
          <!-- </BoundaryConditions> -->
       </DiffusionField>
    </Steppable>
-   
-   <!-- <Steppable Type="UniformInitializer"> -->
-      <!-- &lt;!&ndash; Initial layout of cells in the form of rectangular slab &ndash;&gt;  --> 
-      <!-- <Region> -->
-         <!-- <BoxMin x="20" y="20" z="0"/> -->
-         <!-- <BoxMax x="120" y="236" z="1"/> -->
-         <!-- <Gap>0</Gap> -->
-         <!-- <Width>7</Width> -->
-         <!-- <Types>Stromal,Medium</Types> -->
-      <!-- </Region> -->
-      <!-- <Region> -->
-         <!-- <BoxMin x="130" y="20" z="0"/> -->
-         <!-- <BoxMax x="236" y="236" z="1"/> -->
-         <!-- <Gap>0</Gap> -->
-         <!-- <Width>7</Width> -->
-         <!-- <Types>Medium,Dendritic,TFH</Types> -->
-      <!-- </Region> -->
-   <!-- </Steppable> -->
 </CompuCell3D>

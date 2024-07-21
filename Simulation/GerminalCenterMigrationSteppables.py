@@ -12,7 +12,8 @@ import os
 #100 mcs = one hour
 
 #division time of centroblasts = ~7 hours = 700 mcs
-DIVISION_TIME = 70 #FIXME...700 or 140?
+#FIXME: This is unknown; it could be either 700 or 140.
+DIVISION_TIME = 70 
 
 NUM_AG_KEY = "ag" #a dictionary key for the number of antigen a cell holds
 TOTAL_AG_COLLECTED_KEY = "tag"
@@ -106,10 +107,8 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                     b_cell.dict[LAST_DIV_TIME_KEY] = -10000
                     b_cell.dict[DNA_KEY] = deepcopy(INITIAL_DNA) #shallow copy of DNA list
                     b_cell.dict[AFFINITY_KEY] = original_affinity
-                    # b_cell.dict[COLLECT_FDC_TIME_KEY] = 0
                     b_cell.dict[TFH_TOUCH_TIME_KEY] = 0
                     b_cell.dict[TFH_REWARD_KEY] = 0
-                    # b_cell.dict[DIVISIONS_LEFT_KEY] = get_rand_num_divisions()
                     b_cell.dict[GENERATION_KEY] = 0
                     self.cell_field[x:x+B_CELL_SIZE, y:y+B_CELL_SIZE, 0] = b_cell
         
@@ -208,23 +207,9 @@ class ConstraintInitializerSteppable(SteppableBasePy):
                         print("num_plasma",num_plasma)
                         self.ag_plot_win.add_data_point("plot_ag_collected", mcs, b_cell.dict[GENERATION_KEY])
                     elif touch_time >= TFH_MAX_TOUCH_TIME:
-                        #Violently kill cell!!
+                        #Kill the cell
                         b_cell.targetVolume = 0
                         # self.death_plot_win.add_data_point("plot_death", mcs, affinity)
-                        
-                # if interacting:
-                    # cell.
-                    # # Make sure Chemotaxis Plugin is loaded
-                    # # modifying chemotaxis properties of individual cell 'cell'
-                    # cd = self.chemotaxisPlugin.getChemotaxisData(cell, "CXCL13")
-                    # if cd:
-                        # l = cd.getLambda() - 3
-                        # cd.setLambda(l)
-            
-        
-            
-    # def on_stop(self):
-        # print('stop')
         
         
         
@@ -254,10 +239,8 @@ class MitosisSteppable(MitosisSteppableBase):
         global affinity_field             
 
         self.clone_parent_2_child()
-
-        # for more control of what gets copied from parent to child use cloneAttributes function
+        # For more control of what gets copied from parent to child use cloneAttributes function
         # self.clone_attributes(source_cell=self.parent_cell, target_cell=self.child_cell, no_clone_key_dict_list=[attrib1, attrib2]) 
-        
         
         total_ag = self.parent_cell.dict[NUM_AG_KEY]
         #random chance to perform asymmetric division 
@@ -309,9 +292,6 @@ class DeathSteppable(SteppableBasePy):
     def step(self, mcs):
         for cell in self.cell_list:
             if cell.volume < 2:
-                # if cell.type == self.CENTROBLAST or cell.type == self.CENTROCYTE:
-                    # global num_plasma
-                    # num_plasma += 1
                 self.delete_cell(cell)
                 
 
@@ -352,9 +332,4 @@ class UpdatePlotsSteppable(SteppableBasePy):
             total_cells += 1
         avg_affinity = round(total_affinity / total_cells, 2)
         self.avg_aff_plot_win.add_data_point("plot_avg_affinity", mcs, avg_affinity)
-        
-        
-        
-        
-        
         
